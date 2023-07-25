@@ -1,92 +1,80 @@
-# Images ,Input and Collisions
+# Images ,Input and Physics
 
 import pygame
 import sys
+from scripts.entites import PhysicsEntity
+from scripts.tilemap import Tilemap
+from scripts.utils import load_img, load_images
 
-WIDTH,HEIGHT = 720,480
-BLUE = (21,50,201)
-RED =  (215,20,70)
-BG_COLOR = (21,21,21)
+print("Starting Game")
+
+WIDTH, HEIGHT = 720, 480
+BLUE = (21, 50, 201)
+RED = (215, 20, 70)
+BG_COLOR = (21, 21, 21)
+
+
 class Game:
     def __init__(self):
-
         pygame.init()
-        pygame.display.set_caption('Platformer Game')
+        pygame.display.set_caption("Platformer Game")
 
-        self.screen = pygame.display.set_mode((WIDTH,HEIGHT)) 
+        self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
+        self.display = pygame.Surface((WIDTH / 2, HEIGHT / 2))
+
         self.clock = pygame.time.Clock()
-        self.img = pygame.image.load("data/images/clouds/cloud_2.png")
 
-        # To make the black background in the image as transparent
-        self.img.set_colorkey((0,0,0))
+        self.movement = [False, False]  # Left ,Right
 
-        self.img_pos = [100,100]
-        self.movement = [False,False,False,False] # Left ,Right ,Top ,Down
+        self.assets = {
+            "player": load_img("entities/player.png"),
+            "stone": load_images("tiles/stone"),
+            "grass": load_images("tiles/grass"),
+        }
+        self.tilemap = Tilemap(self)
+        self.player = PhysicsEntity(self, "player", (50, 50), (8, 15))
 
-        self.block = pygame.Rect(200,50,50,100)
-        
     def run(self):
-
         running = True
 
         while running:
+            # compute stuff -------------------------------------------------------|
+            self.player.update(
+                self.tilemap, ((self.movement[1] - self.movement[0]) * 2, 0)
+            )
+
+            # print(self.tilemap.find_neighbours(self.player.pos))
+
             # draw stuff ----------------------------------------------------------|
-            self.screen.fill(BG_COLOR)
+            self.display.fill(BG_COLOR)
+            self.tilemap.render(self.display)
 
-            # bliting img in surface
-            self.img_pos[0] += (self.movement[1] - self.movement[0]) *2
-            self.img_pos[1] += (self.movement[3] - self.movement[2]) *2
+            self.player.render(self.display)
 
-
-            img_r = pygame.Rect(*self.img_pos,*self.img.get_size())
-
-            # Alternatively you can do this
-            # img_r = pygame.Rect(self.img_pos[0],self.img_pos[1],self.img.get_width(),self.img.get_height())
-            
-            # Checking collision --------------------------------------------------|
-            if img_r.colliderect(self.block):
-                
-                pygame.draw.rect(self.screen,RED,self.block) # Screen , Color , Rect
-            else:
-                pygame.draw.rect(self.screen,BLUE,self.block) # Screen , Color , Rect
-
-            self.screen.blit(self.img,self.img_pos)
-
-            # you can also blit something in image as img = surface
-            # self.img.blit(self.screen,self.img_pos)
-
-            
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
                 if event.type == pygame.KEYDOWN:
-
                     # X-Axis ------------------------------------------------------|
                     if event.key == pygame.K_LEFT or event.key == pygame.K_a:
-                        self.movement[0] = True 
+                        self.movement[0] = True
                     if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
-                        self.movement[1] = True 
-                    # Y-Axis ------------------------------------------------------|
-                    if event.key == pygame.K_UP or event.key == pygame.K_w:
-                        self.movement[2] = True 
-                    if event.key == pygame.K_DOWN or event.key == pygame.K_s:
-                        self.movement[3] = True 
+                        self.movement[1] = True
+                    if event.key == pygame.K_UP or event.key == pygame.K_SPACE:
+                        self.player.velocity[1] = -5
                 if event.type == pygame.KEYUP:
                     # X-Axis ------------------------------------------------------|
                     if event.key == pygame.K_LEFT or event.key == pygame.K_a:
                         self.movement[0] = False
                     if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
                         self.movement[1] = False
-                    # Y-Axis ------------------------------------------------------|
-                    if event.key == pygame.K_UP or event.key == pygame.K_w:
-                        self.movement[2] = False
-                    if event.key == pygame.K_DOWN or event.key == pygame.K_s:
-                        self.movement[3] = False
 
             # update stuff --------------------------------------------------------|
+            self.screen.blit(
+                pygame.transform.scale(self.display, self.screen.get_size()), (0, 0)
+            )
             pygame.display.update()
             self.clock.tick(60)
-
 
         # Quit --------------------------------------------------------------------|
         pygame.quit()
@@ -94,4 +82,4 @@ class Game:
 
 
 Game().run()
-
+print("Game Over")
