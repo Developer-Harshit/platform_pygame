@@ -1,14 +1,15 @@
-# Images ,Input and Physics
+# Camera and Sky
 
 import pygame
 import sys
 from scripts.entites import PhysicsEntity
 from scripts.tilemap import Tilemap
+from scripts.clouds import Clouds
 from scripts.utils import load_img, load_images
 
 print("Starting Game")
 
-WIDTH, HEIGHT = 720, 480
+WIDTH, HEIGHT = 320 * 3, 240 * 3
 BLUE = (21, 50, 201)
 RED = (215, 20, 70)
 BG_COLOR = (21, 21, 21)
@@ -20,6 +21,7 @@ class Game:
         pygame.display.set_caption("Platformer Game")
 
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
+        # display is half of screen size
         self.display = pygame.Surface((WIDTH / 2, HEIGHT / 2))
 
         self.clock = pygame.time.Clock()
@@ -30,26 +32,48 @@ class Game:
             "player": load_img("entities/player.png"),
             "stone": load_images("tiles/stone"),
             "grass": load_images("tiles/grass"),
+            "clouds": load_images("clouds"),
+            "background": load_img("background.png"),  # 320 x 240
         }
         self.tilemap = Tilemap(self)
         self.player = PhysicsEntity(self, "player", (50, 50), (8, 15))
+        self.clouds = Clouds(self.assets["clouds"], 20)
+        self.scroll = [0, 0]  # for camera
 
     def run(self):
         running = True
-
         while running:
             # compute stuff -------------------------------------------------------|
+            # Setting scroll position - but scroll causes glitering as it gives float valeu
+            self.scroll[0] += (
+                self.player.get_rect().centerx
+                - self.display.get_width() / 2
+                - self.scroll[0]
+            ) / 30
+            self.scroll[1] += (
+                self.player.get_rect().centery
+                - self.display.get_height() / 2
+                - self.scroll[1]
+            ) / 30
+            # THats why we are converting it into int
+            render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
+            self.clouds.update()
             self.player.update(
                 self.tilemap, ((self.movement[1] - self.movement[0]) * 2, 0)
             )
 
-            # print(self.tilemap.find_neighbours(self.player.pos))
-
             # draw stuff ----------------------------------------------------------|
-            self.display.fill(BG_COLOR)
-            self.tilemap.render(self.display)
+            # Scale it if you wanna set dynamic display size
+            self.display.blit(
+                pygame.transform.scale(
+                    self.assets["background"], self.display.get_size()
+                ),
+                (0, 0),
+            )
+            self.clouds.render(self.display, render_scroll)
+            self.tilemap.render(self.display, render_scroll)  # assigned offset = scroll
 
-            self.player.render(self.display)
+            self.player.render(self.display, render_scroll)  # assigned offset = scroll
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:

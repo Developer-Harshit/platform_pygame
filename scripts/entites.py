@@ -1,4 +1,5 @@
 import pygame
+from scripts.utils import vector_sub
 
 
 class PhysicsEntity:
@@ -18,13 +19,11 @@ class PhysicsEntity:
             movement[0] + self.velocity[0],
             movement[1] + self.velocity[1],
         )
-        print(self.collisions["bottom"])
+
         if not self.collisions["bottom"]:
             # Applying gravity
 
-            self.velocity[1] = min(
-                4, self.velocity[1] + 0.5
-            )  # for impleting terminal velocity while implementing it
+            self.velocity[1] = min(4, self.velocity[1] + 0.5)
 
         self.collisions = {
             "left": False,
@@ -37,7 +36,6 @@ class PhysicsEntity:
         self.pos[1] += frame_movement[1]
         self.check_collision_y(tilemap, frame_movement)
         if self.collisions["bottom"] or self.collisions["top"]:
-            print("hi")
             self.velocity[1] = 0
 
     def check_collision_x(self, tilemap, frame_movement):
@@ -69,5 +67,5 @@ class PhysicsEntity:
                     entity_rect.top = rect.bottom  # push it to the bottom
             self.pos[1] = entity_rect.y
 
-    def render(self, surf):
-        surf.blit(self.game.assets["player"], self.pos)
+    def render(self, surf, offest):
+        surf.blit(self.game.assets["player"], vector_sub(self.pos, offest))
