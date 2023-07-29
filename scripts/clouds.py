@@ -38,7 +38,7 @@ class Clouds:
             my_cloud = Cloud(
                 (random() * 9999, random() * 9999),
                 choice(cloud_images),
-                random() * 1 + 0.05,
+                random() * 0.06 + 0.5,
                 random() * 0.6 + 0.2,
             )
             self.clouds.append(my_cloud)
