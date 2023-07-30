@@ -1,11 +1,11 @@
-# TileMap Optimization
+# Animations
 
 import pygame
 import sys
-from scripts.entites import PhysicsEntity
+from scripts.entites import PhysicsEntity, Player
 from scripts.tilemap import Tilemap
 from scripts.clouds import Clouds
-from scripts.utils import load_img, load_images
+from scripts.utils import load_img, load_images, Animation
 
 print("Starting Game")
 
@@ -34,17 +34,26 @@ class Game:
             "grass": load_images("tiles/grass"),
             "clouds": load_images("clouds"),
             "background": load_img("background.png"),  # 320 x 240
+            "player/idle": Animation(
+                load_images("entities/player/idle"), duration=7, loop=True
+            ),
+            "player/run": Animation(
+                load_images("entities/player/run"), duration=5, loop=True
+            ),
+            "player/jump": Animation(
+                load_images("entities/player/jump"), duration=5, loop=True
+            ),
         }
         self.tilemap = Tilemap(self)
-        self.player = PhysicsEntity(self, "player", (50, 50), (8, 15))
+        self.player = Player(self, (50, 50), (8, 15))
         self.clouds = Clouds(self.assets["clouds"], 20)
         self.scroll = [0, 0]  # for camera
 
     def run(self):
         running = True
         while running:
-            # compute stuff -------------------------------------------------------|
-            # Setting scroll position - but scroll causes glitering as it gives float valeu
+            # For Camera ----------------------------------------------------------|
+
             self.scroll[0] += (
                 self.player.get_rect().centerx
                 - self.display.get_width() / 2
@@ -57,24 +66,27 @@ class Game:
             ) / 30
             # THats why we are converting it into int
             render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
-            self.clouds.update()
-            self.player.update(
-                self.tilemap, ((self.movement[1] - self.movement[0]) * 2, 0)
-            )
 
-            # draw stuff ----------------------------------------------------------|
-            # Scale it if you wanna set dynamic display size
+            # For Background ------------------------------------------------------|
             self.display.blit(
                 pygame.transform.scale(
                     self.assets["background"], self.display.get_size()
                 ),
                 (0, 0),
             )
+            # For clouds ----------------------------------------------------------|
+            self.clouds.update()
             self.clouds.render(self.display, render_scroll)
+            # For TileMap ---------------------------------------------------------|
             self.tilemap.render(self.display, render_scroll)  # assigned offset = scroll
 
+            # For Player ----------------------------------------------------------|
+            self.player.update(
+                self.tilemap, ((self.movement[1] - self.movement[0]) * 2, 0)
+            )
             self.player.render(self.display, render_scroll)  # assigned offset = scroll
 
+            # Checking Events -----------------------------------------------------|
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
@@ -93,7 +105,7 @@ class Game:
                     if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
                         self.movement[1] = False
 
-            # update stuff --------------------------------------------------------|
+            # Rendering Screen ----------------------------------------------------|
             self.screen.blit(
                 pygame.transform.scale(self.display, self.screen.get_size()), (0, 0)
             )

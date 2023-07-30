@@ -1,5 +1,7 @@
 import pygame
 from scripts.utils import vector_sub
+from random import randint
+from perlin_noise import PerlinNoise
 
 # Neighbours offset wrt player
 NEIGHBOUR_OFFSETS = [
@@ -25,17 +27,27 @@ class Tilemap:
 
         self.offgrid_tiles = []  # tiles ie places all over grid
 
-        for i in range(1000000):
-            self.tilemap[str(3 + i) + ";10"] = {
-                "type": "grass",
-                "variant": 1,
-                "pos": (3 + i, 10),
-            }
-            self.tilemap["20;" + str(9 + i)] = {
-                "type": "stone",
-                "variant": 1,
-                "pos": (20, 9 + i),
-            }
+        xOff = 0.002
+        p = PerlinNoise(randint(10, 40))
+        for i in range(100):
+            yOff = 0.0005
+            for j in range(5):
+                noise_s = int(abs((p([xOff, yOff]) * 2) // 1))
+                noise_g = int(abs((p([yOff, xOff]) * 2) // 1))
+
+                self.tilemap[str(3 + i) + ";" + str(j + 1)] = {
+                    "type": "grass",
+                    "variant": noise_g,
+                    "pos": (3 + i, j + 1),
+                }
+
+                self.tilemap[str(3 + i) + ";" + str(j - 7)] = {
+                    "type": "stone",
+                    "variant": noise_s,
+                    "pos": (3 + i, j - 7),
+                }
+                yOff += 0.005
+            xOff += 0.03
 
     def find_neighbours(self, pos):
         neighbour_tiles = []
