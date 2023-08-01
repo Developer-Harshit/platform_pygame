@@ -1,4 +1,5 @@
 import pygame
+import json
 from scripts.utils import vector_sub
 from random import randint
 from perlin_noise import PerlinNoise
@@ -15,39 +16,37 @@ NEIGHBOUR_OFFSETS = [
     (0, 1),
     (1, 1),
 ]
-PHYSICS_TILES = {"grass", "stone"}  # Set is faster to lookup than lists
+# Tile offset wrt curent tile - left right up down
+AUTOTILE_OFFSETS = [(1, 0), (-1, 0), (0, -1), (0, 1)]
+# Rules for autotile mapping
+AUTOTILE_MAP = {
+    tuple(sorted([(1, 0), (0, 1)])): 0,
+    tuple(sorted([(1, 0), (0, 1), (-1, 0)])): 1,
+    tuple(sorted([(-1, 0), (0, 1)])): 2,
+    tuple(sorted([(-1, 0), (0, -1), (0, 1)])): 3,
+    tuple(sorted([(-1, 0), (0, -1)])): 4,
+    tuple(sorted([(-1, 0), (0, -1), (1, 0)])): 5,
+    tuple(sorted([(1, 0), (0, -1)])): 6,
+    tuple(sorted([(1, 0), (0, -1), (0, 1)])): 7,
+    tuple(sorted([(1, 0), (-1, 0), (0, 1), (0, -1)])): 8,
+}
+# Set is faster to lookup than lists
+AUTOTILE_TYPES = {"grass", "stone"}
+PHYSICS_TILES = {"grass", "stone"}
 
 
 class Tilemap:
-    def __init__(self, game, tile_size=16):
+    def __init__(
+        self,
+        game,
+        tile_size=16,
+    ):
         self.tile_size = tile_size
         self.game = game
         # two systems of tiles
         self.tilemap = {}  # convinient for handling physics
 
         self.offgrid_tiles = []  # tiles ie places all over grid
-
-        xOff = 0.002
-        p = PerlinNoise(randint(10, 40))
-        for i in range(100):
-            yOff = 0.0005
-            for j in range(5):
-                noise_s = int(abs((p([xOff, yOff]) * 2) // 1))
-                noise_g = int(abs((p([yOff, xOff]) * 2) // 1))
-
-                self.tilemap[str(3 + i) + ";" + str(j + 1)] = {
-                    "type": "grass",
-                    "variant": noise_g,
-                    "pos": (3 + i, j + 1),
-                }
-
-                self.tilemap[str(3 + i) + ";" + str(j - 7)] = {
-                    "type": "stone",
-                    "variant": noise_s,
-                    "pos": (3 + i, j - 7),
-                }
-                yOff += 0.005
-            xOff += 0.03
 
     def find_neighbours(self, pos):
         neighbour_tiles = []
@@ -61,6 +60,45 @@ class Tilemap:
             if myTile_location in self.tilemap:
                 neighbour_tiles.append(self.tilemap[myTile_location])
         return neighbour_tiles
+
+    def save(self, path):
+        f = open(path, "w")
+        json.dump(
+            {
+                "tilemap": self.tilemap,
+                "tile_size": self.tile_size,
+                "offgrid": self.offgrid_tiles,
+            },
+            f,
+        )
+        f.close()
+
+    def load(self, path):
+        f = open(path, "r")
+        tilemap_data = json.load(f)
+        f.close()
+
+        self.tilemap = tilemap_data["tilemap"]
+        self.tile_size = tilemap_data["tile_size"]
+        self.offgrid_tiles = tilemap_data["offgrid"]
+
+    def autotile(self):
+        for location in self.tilemap:
+            tile = self.tilemap[location]
+            neighbours = set()
+            for offset in AUTOTILE_OFFSETS:
+                check_location = (
+                    str(tile["pos"][0] + offset[0])
+                    + ";"
+                    + str(tile["pos"][1] + offset[1])
+                )
+                if check_location in self.tilemap:
+                    # do stuff
+                    if self.tilemap[check_location]["type"] == tile["type"]:
+                        neighbours.add(offset)
+            neighbours = tuple(sorted(neighbours))
+            if (tile["type"] in AUTOTILE_TYPES) and (neighbours in AUTOTILE_MAP):
+                tile["variant"] = AUTOTILE_MAP[neighbours]
 
     def find_physics_neighbours(self, pos):
         physics_rects = []

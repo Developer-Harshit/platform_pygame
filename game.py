@@ -1,4 +1,4 @@
-# Animations
+# Level Editor
 
 import pygame
 import sys
@@ -32,6 +32,9 @@ class Game:
             "player": load_img("entities/player.png"),
             "stone": load_images("tiles/stone"),
             "grass": load_images("tiles/grass"),
+            "decor": load_images("tiles/decor"),
+            "large_decor": load_images("tiles/large_decor"),
+            "spawners": load_images("tiles/spawners"),
             "clouds": load_images("clouds"),
             "background": load_img("background.png"),  # 320 x 240
             "player/idle": Animation(
@@ -45,6 +48,8 @@ class Game:
             ),
         }
         self.tilemap = Tilemap(self)
+        self.tilemap.load("data/maps/0.json")
+
         self.player = Player(self, (50, 50), (8, 15))
         self.clouds = Clouds(self.assets["clouds"], 20)
         self.scroll = [0, 0]  # for camera
@@ -117,5 +122,6 @@ class Game:
         sys.exit()
 
 
-Game().run()
+if __name__ == "__main__":
+    Game().run()
 print("Game Over")
