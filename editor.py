@@ -45,7 +45,7 @@ class Editor:
 
         self.tilemap = Tilemap(self)
         try:
-            self.tilemap.load("data/maps/0k.json")
+            self.tilemap.load("data/maps/test.json")
         except FileNotFoundError:
             print("file does not exist")
         self.scroll = [0, 0]  # for camera
@@ -115,8 +115,6 @@ class Editor:
                     )
                     if tile_rect.collidepoint(mouse_pos):
                         self.tilemap.offgrid_tiles.remove(tile)
-
-                    print(tile_img)
 
             # Bliting the preview -------------------------------------------------|
             current_tile_img.set_alpha(80)

@@ -48,6 +48,36 @@ class Tilemap:
 
         self.offgrid_tiles = []  # tiles ie places all over grid
 
+    # id_pairs is the list of type:variant
+    def extract(self, id_pairs, keep=False):
+        result = []
+
+        for tile in self.offgrid_tiles.copy():
+            if (tile["type"], tile["variant"]) in id_pairs:
+                result.append(tile.copy())
+                if not keep:
+                    self.offgrid_tiles.remove(tile)
+
+                    pass
+
+        for location in self.tilemap.copy():
+            tile = self.tilemap[location]
+
+            if (tile["type"], tile["variant"]) in id_pairs:
+                result.append(tile.copy())
+
+                # To be sure
+                result[-1]["pos"] = result[-1]["pos"].copy()
+
+                result[-1]["pos"][0] *= self.tile_size
+                result[-1]["pos"][1] *= self.tile_size
+
+                if not keep:
+                    del self.tilemap[location]
+
+                    pass
+        return result
+
     def find_neighbours(self, pos):
         neighbour_tiles = []
         tile_location = (int(pos[0] // self.tile_size), int(pos[1] // self.tile_size))
