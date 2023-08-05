@@ -1,4 +1,4 @@
-# Level Editor
+# Jump ,Slide and Dash
 
 import pygame
 import sys
@@ -52,15 +52,21 @@ class Game:
                 load_images("entities/player/jump"),
                 duration=5,
             ),
+            "player/slide": Animation(
+                load_images("entities/player/slide"),
+            ),
+            "player/wall_slide": Animation(
+                load_images("entities/player/wall_slide"),
+            ),
             "particle/leaf": Animation(
                 load_images(
                     "particles/leaf",
                 ),
-                duration=10,
+                duration=20,
                 loop=False,
             ),
             "particle/particle": Animation(
-                load_images("particles/particle"), duration=10, loop=False
+                load_images("particles/particle"), duration=7, loop=False
             ),
         }
         self.tilemap = Tilemap(self)
@@ -153,8 +159,13 @@ class Game:
                         self.movement[0] = True
                     if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
                         self.movement[1] = True
+
                     if event.key == pygame.K_UP or event.key == pygame.K_SPACE:
-                        self.player.velocity[1] = -5
+                        # self.player.velocity[1] = -5
+                        self.player.jump()
+                    if event.key == pygame.K_l:
+                        self.player.dash()
+
                 if event.type == pygame.KEYUP:
                     # X-Axis ------------------------------------------------------|
                     if event.key == pygame.K_LEFT or event.key == pygame.K_a:
