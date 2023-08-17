@@ -88,9 +88,9 @@ class Game:
             "projectile": load_img("projectile.png"),
         }
 
-        self.map_id = 0
+        self.map_index = 0
         self.tilemap = Tilemap(self)
-        self.load_level(self.map_id)
+        self.load_level(LEVELS[self.map_index])
         self.clouds = Clouds(self.assets["clouds"], 20)
 
         self.shake_value = 0
@@ -113,6 +113,9 @@ class Game:
         self.projectiles = []  # *
 
         self.death = 0  # *
+
+        # -30 means the screen is pitch black ,+ 30 means you can see everything
+        self.transition = -30
         pass
 
     def leaf_init(self):
@@ -140,12 +143,20 @@ class Game:
         while running:
             # Decreasing shake value
             self.shake_value = max(0, self.shake_value - 1)
+            # Transition Math -----------------------------------------------------|
+            if not len(self.enemies):
+                self.transition += 1
+                if self.transition > 30:
+                    self.map_index = (self.map_index + 1) % len(LEVELS)
+                    self.load_level(LEVELS[self.map_index])
+            if self.transition < 0:
+                self.transition += 1
 
             # Death ---------------------------------------------------------------|
             if self.death:
                 self.death += 1
                 if self.death > 40:
-                    self.load_level(self.map_id)
+                    self.load_level(LEVELS[self.map_index])
 
             # For Camera ----------------------------------------------------------|
 
@@ -287,6 +298,10 @@ class Game:
                 if event.type == pygame.QUIT:
                     running = False
                 if event.type == pygame.KEYDOWN:
+                    # Escape ------------------------------------------------------|
+                    if event.key == pygame.K_ESCAPE:
+                        running = False
+
                     # X-Axis ------------------------------------------------------|
                     if event.key == pygame.K_LEFT or event.key == pygame.K_a:
                         self.movement[0] = True
@@ -306,6 +321,19 @@ class Game:
                     if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
                         self.movement[1] = False
 
+            # Transition effect ---------------------------------------------------|
+            if self.transition:
+                transition_surf = pygame.Surface(self.display.get_size())
+                pygame.draw.circle(
+                    transition_surf,
+                    (255, 255, 255),
+                    (self.display.get_width() // 2, self.display.get_height() // 2),
+                    (30 - abs(self.transition)) * 10,
+                )
+
+                transition_surf.set_colorkey((255, 255, 255))
+                self.display.blit(transition_surf, (0, 0))
+
             # Rendering Screen ----------------------------------------------------|
 
             shake_offset = (
@@ -320,11 +348,10 @@ class Game:
             pygame.display.update()
             self.clock.tick(60)
 
-        # Quit --------------------------------------------------------------------|
-        pygame.quit()
-        sys.exit()
-
 
 if __name__ == "__main__":
     Game().run()
+    pygame.quit()
 print("Game Over")
+sys.exit()
+exit()
