@@ -48,8 +48,20 @@ class Tilemap:
 
         self.offgrid_tiles = []  # tiles ie places all over grid
 
-    # id_pairs is the list of type:variant
+    def check_solid(self, pos):
+        tile_location = (
+            str(int(pos[0] // self.tile_size))
+            + ";"
+            + str(int(pos[1] // self.tile_size))
+        )
+
+        if tile_location in self.tilemap:
+            if self.tilemap[tile_location]["type"] in PHYSICS_TILES:
+                return self.tilemap[tile_location]
+            return False
+
     def extract(self, id_pairs, keep=False):
+        """id_pairs is the list of type:variant like this --> [('type1','var1'),('type2','var2')]"""
         result = []
 
         for tile in self.offgrid_tiles.copy():

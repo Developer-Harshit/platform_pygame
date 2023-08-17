@@ -2,7 +2,7 @@ import pygame
 import math
 from random import random, randint
 from scripts.utils import vector_sub, vector_add
-from scripts.particle import Particle
+from scripts.particle import Particle, Spark
 
 
 class PhysicsEntity:
@@ -105,6 +105,144 @@ class PhysicsEntity:
             self.pos[1] = entity_rect.y
 
 
+class Enemy(PhysicsEntity):
+    def __init__(self, game, pos, size):
+        super().__init__(game, "enemy", pos, size)
+
+        self.walking = 0
+
+    def shoot(self):
+        dist_vect = (
+            self.game.player.pos[0] - self.pos[0],
+            self.game.player.pos[1] - self.pos[1],
+        )
+        if abs(dist_vect[1] < 16):
+            # Shooting to left
+            if self.flip and dist_vect[0] < 0:
+                # Adding projectile
+                self.game.projectiles.append(
+                    [
+                        [self.get_rect().centerx - 7, self.get_rect().centery],
+                        -1.5,
+                        0,
+                    ]
+                )
+                # Adding sparks effect
+                for i in range(7):
+                    self.game.sparks.append(
+                        Spark(
+                            self.game.projectiles[-1][0],
+                            random() - 0.5 + math.pi,
+                            2 * random(),
+                        )
+                    )
+                pass
+            # Shooting to right
+            if not self.flip and dist_vect[0] > 0:
+                # Adding projectile
+
+                self.game.projectiles.append(
+                    [
+                        [self.get_rect().centerx + 7, self.get_rect().centery],
+                        1.5,
+                        0,
+                    ]
+                )
+                # Adding sparks effect
+                for i in range(7):
+                    self.game.sparks.append(
+                        Spark(
+                            self.game.projectiles[-1][0],
+                            random() - 0.5,
+                            2 * random(),
+                        )
+                    )
+
+    def render(self, surf, offset=(0, 0)):
+        super().render(surf, offset)
+
+        # Bliting Gun
+        inc = (-4 - self.game.assets["gun"].get_width()) if self.flip else 4
+        surf.blit(
+            pygame.transform.flip(self.game.assets["gun"], self.flip, False),
+            (
+                self.get_rect().centerx + inc - offset[0],
+                self.get_rect().centery - offset[1],
+            ),
+        )
+
+    def update(self, tilemap, movement=(0, 0)):
+        # self.walking ~ False when = 0
+        # Do not Touch ------------------------------------------------------------|
+        if self.walking:
+            # Checking for ahead of current position and below the current height
+            if tilemap.check_solid(
+                (self.get_rect().centerx + (-7 if self.flip else 7), self.pos[1] + 23)
+            ):
+                # Checking for colliison with a wall
+                if self.collisions["left"] or self.collisions["right"]:
+                    self.flip = not self.flip
+                else:
+                    movement = (
+                        movement[0] + (-1 if self.flip else +1),
+                        movement[1],
+                    )
+            else:
+                self.flip = not self.flip
+            self.walking = max(self.walking - 1, 0)
+
+        # For Flipping and randomly start walking
+        elif random() < 0.007:
+            if random() < 0.05:
+                self.flip = not self.flip
+            self.walking = randint(20, 100)
+        # For shooting projectiles
+        elif random() < 0.04:
+            self.shoot()
+
+        # -------------------------------------------------------------------------|
+        super().update(tilemap, movement)
+        # Setting State -----------------------------------------------------------|
+        if movement[0] != 0:
+            self.set_state("run")
+        else:
+            self.set_state("idle")
+        # if player in dash state
+        if abs(self.game.player.is_dashing) >= 50:
+            if self.get_rect().colliderect(self.game.player.get_rect()):
+                self.game.sparks.append(
+                    Spark(
+                        self.get_rect().center,
+                        0,
+                        2.5 + random(),
+                        (11, 11, 11),
+                        (220, 30, 70),
+                    )
+                )
+
+                self.game.sparks.append(
+                    Spark(
+                        self.get_rect().center,
+                        math.pi,
+                        2.5 + random(),
+                        (11, 11, 11),
+                        (220, 30, 70),
+                    )
+                )
+                for i in range(10):
+                    angle = random() * math.pi * 2
+                    speed = random() * 5
+                    self.game.sparks.append(
+                        Spark(
+                            self.get_rect().center,
+                            angle,
+                            speed,
+                        )
+                    )
+
+                return True
+
+
 # inheriting PhysicEntity Class
 class Player(PhysicsEntity):
     def __init__(self, game, pos, size):
@@ -124,13 +262,12 @@ class Player(PhysicsEntity):
             # show dash particles
             pass
 
-    """
-    Player can jump 1 time,if you run out of jump you cant jump again
-    But if your are on wall ,your jump resets
-    But if you fall from wall without jumping you can jump again
-    """
-
     def update(self, tilemap, movement=(0, 0)):
+        """
+        Player can jump 1 time,if you run out of jump you cant jump again
+        But if your are on wall ,your jump resets
+        But if you fall from wall without jumping you can jump again
+        """
         super().update(tilemap, movement)
         self.air_time += 1
         # Jump --------------------------------------------------------------------|
@@ -233,16 +370,17 @@ class Player(PhysicsEntity):
             # if facing left and moving left
             if self.flip and self.last_movement[0] < 0:
                 # Move right and up
-                self.velocity[0] = 3
-                self.velocity[1] = -3.5
+                self.velocity[0] = 2
+                self.velocity[1] = -5.5
                 self.air_time = 5
                 self.jump_data["current"] = max(0, self.jump_data["current"] - 1)
                 return True
             # if facing right and moving right
             elif not self.flip and self.last_movement[0] > 0:
                 # Move left and up
-                self.velocity[0] = -3
-                self.velocity[1] = -3.5
+                self.velocity[0] = -2
+
+                self.velocity[1] = -5.5
                 self.air_time = 5
                 self.jump_data["current"] = max(0, self.jump_data["current"] - 1)
                 return True

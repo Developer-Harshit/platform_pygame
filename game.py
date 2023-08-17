@@ -1,13 +1,13 @@
-# Jump ,Slide and Dash
+# Enemies,Guns,Death & Sparks
 
 import pygame
 import sys
 import math
 from random import random, randint
-from scripts.entites import PhysicsEntity, Player
+from scripts.entites import PhysicsEntity, Player, Enemy
 from scripts.tilemap import Tilemap
 from scripts.clouds import Clouds
-from scripts.particle import Particle
+from scripts.particle import Particle, Spark
 from scripts.utils import load_img, load_images, Animation
 
 print("Starting Game")
@@ -16,6 +16,7 @@ WIDTH, HEIGHT = 320 * 3, 240 * 3
 BLUE = (21, 50, 201)
 RED = (215, 20, 70)
 BG_COLOR = (21, 21, 21)
+LEVELS = ["0", "1", "2", "3"]
 
 
 class Game:
@@ -32,6 +33,7 @@ class Game:
         self.movement = [False, False]  # Left ,Right
 
         self.assets = {
+            # Basic assets --------------------------------------------------------|
             "player": load_img("entities/player.png"),
             "stone": load_images("tiles/stone"),
             "grass": load_images("tiles/grass"),
@@ -40,6 +42,7 @@ class Game:
             "spawners": load_images("tiles/spawners"),
             "clouds": load_images("clouds"),
             "background": load_img("background.png"),  # 320 x 240
+            # Player Animation ----------------------------------------------------|
             "player/idle": Animation(
                 load_images("entities/player/idle"),
                 duration=7,
@@ -58,6 +61,16 @@ class Game:
             "player/wall_slide": Animation(
                 load_images("entities/player/wall_slide"),
             ),
+            # Enemy Animation -----------------------------------------------------|
+            "enemy/idle": Animation(
+                load_images("entities/enemy/idle"),
+                duration=7,
+            ),
+            "enemy/run": Animation(
+                load_images("entities/enemy/run"),
+                duration=5,
+            ),
+            # Particle Animation --------------------------------------------------|
             "particle/leaf": Animation(
                 load_images(
                     "particles/leaf",
@@ -68,24 +81,64 @@ class Game:
             "particle/particle": Animation(
                 load_images("particles/particle"), duration=7, loop=False
             ),
+            "gun": load_img("gun.png"),
+            "projectile": load_img("projectile.png"),
         }
+
         self.tilemap = Tilemap(self)
-        self.tilemap.load("data/maps/test.json")
+        self.map_id = 0
+        self.load_level(self.map_id)
 
-        self.player = Player(self, (50, 50), (8, 15))
         self.clouds = Clouds(self.assets["clouds"], 20)
-        self.scroll = [0, 0]  # for camera
 
+    def load_level(self, map_id):
+        self.tilemap.load(f"data/maps/{map_id}.json")
+
+        self.player = Player(self, (50, 50), (8, 15))  # *
+
+        self.scroll = [0, 0]  # for camera #*
+
+        self.leaf_init()  # *
+
+        self.spawn_init()  # *
+
+        self.sparks = []  # *
+
+        self.particles = []  # *
+
+        self.projectiles = []  # *
+
+        self.death = 0  # *
+        pass
+
+    def leaf_init(self):
         self.leaf_rect = []
-        for tree in self.tilemap.extract([("large_decor", 2)], keep=True):
+        for tree in self.tilemap.extract([("large_decor", 2)], keep=True):  # *
             self.leaf_rect.append(
                 pygame.Rect(4 + tree["pos"][0], 4 + tree["pos"][1], 23, 13)
             )
-        self.particles = []
+
+    def spawn_init(self):
+        self.enemies = []
+        # Extracting spawners/entity tile
+        for spawner in self.tilemap.extract((("spawners", 0), ("spawners", 1))):  # *
+            if spawner["variant"] == 0:
+                self.player.pos = spawner["pos"]
+            else:
+                self.enemies.append(Enemy(self, spawner["pos"], (8, 15)))
+
+                # its enemy entity
+                pass
 
     def run(self):
         running = True
+
         while running:
+            if self.death:
+                self.death += 1
+                if self.death > 40:
+                    self.load_level(self.map_id)
+
             # For Camera ----------------------------------------------------------|
 
             self.scroll[0] += (
@@ -132,11 +185,81 @@ class Game:
             # For TileMap ---------------------------------------------------------|
             self.tilemap.render(self.display, render_scroll)  # assigned offset = scroll
 
+            # For Enemies ----------------------------------------------------------|
+            for enemy in self.enemies:
+                kill = enemy.update(self.tilemap, (0, 0))
+                enemy.render(self.display, render_scroll)  # assigned offset = scroll
+                if kill:
+                    self.enemies.remove(enemy)
+
             # For Player ----------------------------------------------------------|
-            self.player.update(
-                self.tilemap, ((self.movement[1] - self.movement[0]) * 2, 0)
-            )
-            self.player.render(self.display, render_scroll)  # assigned offset = scroll
+            if not self.death:
+                self.player.update(
+                    self.tilemap, ((self.movement[1] - self.movement[0]) * 2, 0)
+                )
+                self.player.render(
+                    self.display, render_scroll
+                )  # assigned offset = scroll
+
+            # For Projectiles -----------------------------------------------------|
+            # Format of each projectile[ [x,y],direction,timer]
+            for projectile in self.projectiles.copy():
+                projectile[0][0] += projectile[1]
+                projectile[2] += 1
+                img = self.assets["projectile"]
+                projectile_pos = (
+                    projectile[0][0] - img.get_width() / 2,
+                    projectile[0][1] - img.get_height() / 2,
+                )
+                self.display.blit(
+                    img,
+                    (
+                        projectile_pos[0] - render_scroll[0],
+                        projectile_pos[1] - render_scroll[1],
+                    ),
+                )
+                # Collided with wall
+                if self.tilemap.check_solid(projectile[0]):
+                    # Adding sparks effect
+                    for i in range(7):
+                        self.sparks.append(
+                            Spark(
+                                self.projectiles[0][0],
+                                random() - 0.5 + (math.pi if projectile[1] > 0 else 0),
+                                2 * random(),
+                            )
+                        )
+                    self.projectiles.remove(projectile)
+
+                # Projectile tieout
+                elif projectile[2] > 360:
+                    self.projectiles.remove(projectile)
+                # Hit the player
+                elif abs(self.player.is_dashing) < 50:
+                    if self.player.get_rect().collidepoint(projectile[0]):
+                        # Player recieves damage
+                        # Spark Explosion
+                        for i in range(10):
+                            angle = random() * math.pi * 2
+                            speed = random() * 5
+                            self.sparks.append(
+                                Spark(
+                                    self.player.get_rect().center,
+                                    angle,
+                                    speed,
+                                )
+                            )
+
+                        self.projectiles.remove(projectile)
+                        self.death = 1
+            # For Sparks ----------------------------------------------------------|
+            for spark in self.sparks.copy():
+                kill = spark.update()
+
+                spark.render(self.display, render_scroll)
+
+                if kill:
+                    self.sparks.remove(spark)
 
             # For Particle --------------------------------------------------------|
             for particle in self.particles.copy():
