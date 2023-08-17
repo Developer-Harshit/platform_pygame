@@ -239,8 +239,8 @@ class Enemy(PhysicsEntity):
                             speed,
                         )
                     )
-
-                return True
+                kill = True
+                return kill
 
 
 # inheriting PhysicEntity Class
@@ -263,13 +263,12 @@ class Player(PhysicsEntity):
             pass
 
     def update(self, tilemap, movement=(0, 0)):
-        """
-        Player can jump 1 time,if you run out of jump you cant jump again
-        But if your are on wall ,your jump resets
-        But if you fall from wall without jumping you can jump again
-        """
         super().update(tilemap, movement)
         self.air_time += 1
+        # Death -------------------------------------------------------------------|
+        if self.air_time > 150:
+            self.game.shake_value = max(20, self.game.shake_value)
+            self.game.death += 1
         # Jump --------------------------------------------------------------------|
         if self.collisions["bottom"]:
             self.air_time = 0

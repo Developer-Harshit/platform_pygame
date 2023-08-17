@@ -1,4 +1,4 @@
-# Enemies,Guns,Death & Sparks
+# Screnshake
 
 import pygame
 import sys
@@ -22,11 +22,14 @@ LEVELS = ["0", "1", "2", "3"]
 class Game:
     def __init__(self):
         pygame.init()
+
         pygame.display.set_caption("Platformer Game")
 
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
-        # display is half of screen size
-        self.display = pygame.Surface((WIDTH / 2, HEIGHT / 2))
+
+        self.display = pygame.Surface(
+            (WIDTH / 2, HEIGHT / 2)
+        )  # display is half of screen size
 
         self.clock = pygame.time.Clock()
 
@@ -85,18 +88,19 @@ class Game:
             "projectile": load_img("projectile.png"),
         }
 
-        self.tilemap = Tilemap(self)
         self.map_id = 0
+        self.tilemap = Tilemap(self)
         self.load_level(self.map_id)
-
         self.clouds = Clouds(self.assets["clouds"], 20)
+
+        self.shake_value = 0
 
     def load_level(self, map_id):
         self.tilemap.load(f"data/maps/{map_id}.json")
 
         self.player = Player(self, (50, 50), (8, 15))  # *
 
-        self.scroll = [0, 0]  # for camera #*
+        self.scroll = [0, 0]  # * for camera
 
         self.leaf_init()  # *
 
@@ -134,6 +138,10 @@ class Game:
         running = True
 
         while running:
+            # Decreasing shake value
+            self.shake_value = max(0, self.shake_value - 1)
+
+            # Death ---------------------------------------------------------------|
             if self.death:
                 self.death += 1
                 if self.death > 40:
@@ -190,6 +198,7 @@ class Game:
                 kill = enemy.update(self.tilemap, (0, 0))
                 enemy.render(self.display, render_scroll)  # assigned offset = scroll
                 if kill:
+                    self.shake_value = max(14, self.shake_value)
                     self.enemies.remove(enemy)
 
             # For Player ----------------------------------------------------------|
@@ -251,7 +260,8 @@ class Game:
                             )
 
                         self.projectiles.remove(projectile)
-                        self.death = 1
+                        self.shake_value = max(16, self.shake_value)
+                        self.death += 1
             # For Sparks ----------------------------------------------------------|
             for spark in self.sparks.copy():
                 kill = spark.update()
@@ -297,8 +307,15 @@ class Game:
                         self.movement[1] = False
 
             # Rendering Screen ----------------------------------------------------|
+
+            shake_offset = (
+                random() * self.shake_value - self.shake_value / 2,
+                random() * self.shake_value - self.shake_value / 2,
+            )
+
             self.screen.blit(
-                pygame.transform.scale(self.display, self.screen.get_size()), (0, 0)
+                pygame.transform.scale(self.display, self.screen.get_size()),
+                shake_offset,
             )
             pygame.display.update()
             self.clock.tick(60)
