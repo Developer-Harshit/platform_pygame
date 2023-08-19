@@ -92,4 +92,5 @@ class Spark:
         ]
 
         pygame.draw.polygon(surf, self.color, render_points)
-        gfx.aapolygon(surf, render_points, self.border_color)
+
+        # gfx.aapolygon(surf, render_points, self.border_color)

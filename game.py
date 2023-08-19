@@ -1,4 +1,4 @@
-# Screnshake
+# Outline and masks
 
 import pygame
 import sys
@@ -27,9 +27,9 @@ class Game:
 
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
-        self.display = pygame.Surface(
-            (WIDTH / 2, HEIGHT / 2)
-        )  # display is half of screen size
+        # display is half of screen size
+        self.display = pygame.Surface((WIDTH / 2, HEIGHT / 2), pygame.SRCALPHA)
+        self.display_two = pygame.Surface((WIDTH / 2, HEIGHT / 2))
 
         self.clock = pygame.time.Clock()
 
@@ -94,6 +94,8 @@ class Game:
         self.clouds = Clouds(self.assets["clouds"], 20)
 
         self.shake_value = 0
+
+        self.show_outline = False
 
     def load_level(self, map_id):
         self.tilemap.load(f"data/maps/{map_id}.json")
@@ -191,23 +193,29 @@ class Game:
                         )
                     )
             # For Background ------------------------------------------------------|
-            self.display.blit(
+            self.display.fill((0, 0, 0, 0))
+            self.display_two.blit(
                 pygame.transform.scale(
                     self.assets["background"], self.display.get_size()
                 ),
                 (0, 0),
             )
+
             # For clouds ----------------------------------------------------------|
             self.clouds.update()
-            self.clouds.render(self.display, render_scroll)
+            self.clouds.render(self.display_two, render_scroll)
 
             # For TileMap ---------------------------------------------------------|
-            self.tilemap.render(self.display, render_scroll)  # assigned offset = scroll
+            self.tilemap.render(
+                self.display_two, render_scroll
+            )  # assigned offset = scroll
 
             # For Enemies ----------------------------------------------------------|
             for enemy in self.enemies:
                 kill = enemy.update(self.tilemap, (0, 0))
-                enemy.render(self.display, render_scroll)  # assigned offset = scroll
+                enemy.render(
+                    self.display_two, render_scroll
+                )  # assigned offset = scroll
                 if kill:
                     self.shake_value = max(14, self.shake_value)
                     self.enemies.remove(enemy)
@@ -218,7 +226,7 @@ class Game:
                     self.tilemap, ((self.movement[1] - self.movement[0]) * 2, 0)
                 )
                 self.player.render(
-                    self.display, render_scroll
+                    self.display_two, render_scroll
                 )  # assigned offset = scroll
 
             # For Projectiles -----------------------------------------------------|
@@ -281,6 +289,14 @@ class Game:
 
                 if kill:
                     self.sparks.remove(spark)
+            # Creating Display Mask -----------------------------------------------|
+            if self.show_outline:
+                display_mask = pygame.mask.from_surface(self.display)
+                display_sillhouette = display_mask.to_surface(
+                    setcolor=(40, 10, 80, 120), unsetcolor=(0, 0, 0, 0)
+                )
+                for offset in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                    self.display_two.blit(display_sillhouette, offset)
 
             # For Particle --------------------------------------------------------|
             for particle in self.particles.copy():
@@ -298,6 +314,9 @@ class Game:
                 if event.type == pygame.QUIT:
                     running = False
                 if event.type == pygame.KEYDOWN:
+                    # Show Outline ------------------------------------------------|
+                    if event.key == pygame.K_i:
+                        self.show_outline = not self.show_outline
                     # Escape ------------------------------------------------------|
                     if event.key == pygame.K_ESCAPE:
                         running = False
@@ -340,9 +359,9 @@ class Game:
                 random() * self.shake_value - self.shake_value / 2,
                 random() * self.shake_value - self.shake_value / 2,
             )
-
+            self.display_two.blit(self.display, (0, 0))
             self.screen.blit(
-                pygame.transform.scale(self.display, self.screen.get_size()),
+                pygame.transform.scale(self.display_two, self.screen.get_size()),
                 shake_offset,
             )
             pygame.display.update()
