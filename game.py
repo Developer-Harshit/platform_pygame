@@ -1,4 +1,4 @@
-# Outline and masks
+# Audio
 
 import pygame
 import sys
@@ -22,6 +22,7 @@ LEVELS = ["0", "1", "2", "3"]
 class Game:
     def __init__(self):
         pygame.init()
+        pygame.mixer.init()
 
         pygame.display.set_caption("Platformer Game")
 
@@ -87,6 +88,19 @@ class Game:
             "gun": load_img("gun.png"),
             "projectile": load_img("projectile.png"),
         }
+        # its best to use .wav files,other types can give error
+        self.sfx = {
+            "ambience": pygame.mixer.Sound("data/sfx/ambience.wav"),
+            "dash": pygame.mixer.Sound("data/sfx/dash.wav"),
+            "hit": pygame.mixer.Sound("data/sfx/hit.wav"),
+            "jump": pygame.mixer.Sound("data/sfx/jump.wav"),
+            "shoot": pygame.mixer.Sound("data/sfx/shoot.wav"),
+        }
+        self.sfx["ambience"].set_volume(0.3)
+        self.sfx["dash"].set_volume(0.2)
+        self.sfx["hit"].set_volume(0.7)
+        self.sfx["jump"].set_volume(0.7)
+        self.sfx["shoot"].set_volume(0.3)
 
         self.map_index = 0
         self.tilemap = Tilemap(self)
@@ -95,7 +109,7 @@ class Game:
 
         self.shake_value = 0
 
-        self.show_outline = False
+        self.show_outline = True
 
     def load_level(self, map_id):
         self.tilemap.load(f"data/maps/{map_id}.json")
@@ -141,6 +155,11 @@ class Game:
 
     def run(self):
         running = True
+
+        pygame.mixer.music.load("data/music.wav")
+        pygame.mixer.music.set_volume(0.5)
+        pygame.mixer.music.play(-1)
+        self.sfx["ambience"].play(-1)
 
         while running:
             # Decreasing shake value
@@ -203,19 +222,15 @@ class Game:
 
             # For clouds ----------------------------------------------------------|
             self.clouds.update()
-            self.clouds.render(self.display_two, render_scroll)
+            self.clouds.render(self.display, render_scroll)
 
             # For TileMap ---------------------------------------------------------|
-            self.tilemap.render(
-                self.display_two, render_scroll
-            )  # assigned offset = scroll
+            self.tilemap.render(self.display, render_scroll)  # assigned offset = scroll
 
             # For Enemies ----------------------------------------------------------|
             for enemy in self.enemies:
                 kill = enemy.update(self.tilemap, (0, 0))
-                enemy.render(
-                    self.display_two, render_scroll
-                )  # assigned offset = scroll
+                enemy.render(self.display, render_scroll)  # assigned offset = scroll
                 if kill:
                     self.shake_value = max(14, self.shake_value)
                     self.enemies.remove(enemy)
@@ -226,7 +241,7 @@ class Game:
                     self.tilemap, ((self.movement[1] - self.movement[0]) * 2, 0)
                 )
                 self.player.render(
-                    self.display_two, render_scroll
+                    self.display, render_scroll
                 )  # assigned offset = scroll
 
             # For Projectiles -----------------------------------------------------|
@@ -257,6 +272,7 @@ class Game:
                                 2 * random(),
                             )
                         )
+                    self.sfx["shoot"].play()
                     self.projectiles.remove(projectile)
 
                 # Projectile tieout
@@ -280,6 +296,7 @@ class Game:
 
                         self.projectiles.remove(projectile)
                         self.shake_value = max(16, self.shake_value)
+                        self.sfx["hit"].play()
                         self.death += 1
             # For Sparks ----------------------------------------------------------|
             for spark in self.sparks.copy():
@@ -293,10 +310,11 @@ class Game:
             if self.show_outline:
                 display_mask = pygame.mask.from_surface(self.display)
                 display_sillhouette = display_mask.to_surface(
-                    setcolor=(40, 10, 80, 120), unsetcolor=(0, 0, 0, 0)
+                    setcolor=(140, 10, 210, 120), unsetcolor=(0, 0, 0, 0)
                 )
-                for offset in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                    self.display_two.blit(display_sillhouette, offset)
+                # for offset in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                #     self.display_two.blit(display_sillhouette, offset)
+                self.display_two.blit(display_sillhouette, (2, 2))
 
             # For Particle --------------------------------------------------------|
             for particle in self.particles.copy():
@@ -329,7 +347,8 @@ class Game:
 
                     if event.key == pygame.K_UP or event.key == pygame.K_SPACE:
                         # self.player.velocity[1] = -5
-                        self.player.jump()
+                        if self.player.jump():
+                            self.sfx["jump"].play()
                     if event.key == pygame.K_l:
                         self.player.dash()
 

@@ -112,6 +112,7 @@ class Enemy(PhysicsEntity):
         self.walking = 0
 
     def shoot(self):
+        shooted = False
         dist_vect = (
             self.game.player.pos[0] - self.pos[0],
             self.game.player.pos[1] - self.pos[1],
@@ -119,6 +120,7 @@ class Enemy(PhysicsEntity):
         if abs(dist_vect[1] < 16):
             # Shooting to left
             if self.flip and dist_vect[0] < 0:
+                shooted = True
                 # Adding projectile
                 self.game.projectiles.append(
                     [
@@ -127,20 +129,13 @@ class Enemy(PhysicsEntity):
                         0,
                     ]
                 )
-                # Adding sparks effect
-                for i in range(7):
-                    self.game.sparks.append(
-                        Spark(
-                            self.game.projectiles[-1][0],
-                            random() - 0.5 + math.pi,
-                            2 * random(),
-                        )
-                    )
+
                 pass
             # Shooting to right
             if not self.flip and dist_vect[0] > 0:
-                # Adding projectile
+                shooted = True
 
+                # Adding projectile
                 self.game.projectiles.append(
                     [
                         [self.get_rect().centerx + 7, self.get_rect().centery],
@@ -148,15 +143,19 @@ class Enemy(PhysicsEntity):
                         0,
                     ]
                 )
-                # Adding sparks effect
-                for i in range(7):
-                    self.game.sparks.append(
-                        Spark(
-                            self.game.projectiles[-1][0],
-                            random() - 0.5,
-                            2 * random(),
-                        )
+
+        if shooted:
+            # Sound effect
+            self.game.sfx["shoot"].play()
+            # Adding sparks effect
+            for i in range(7):
+                self.game.sparks.append(
+                    Spark(
+                        self.game.projectiles[-1][0],
+                        random() - 0.5,
+                        2 * random(),
                     )
+                )
 
     def render(self, surf, offset=(0, 0)):
         super().render(surf, offset)
@@ -197,7 +196,7 @@ class Enemy(PhysicsEntity):
                 self.flip = not self.flip
             self.walking = randint(20, 100)
         # For shooting projectiles
-        elif random() < 0.04:
+        elif random() < 0.02:
             self.shoot()
 
         # -------------------------------------------------------------------------|
@@ -268,6 +267,7 @@ class Player(PhysicsEntity):
         # Death -------------------------------------------------------------------|
         if self.air_time > 150:
             self.game.shake_value = max(20, self.game.shake_value)
+            self.game.sfx["hit"].play()
             self.game.death += 1
         # Jump --------------------------------------------------------------------|
         if self.collisions["bottom"]:
@@ -343,6 +343,8 @@ class Player(PhysicsEntity):
 
     def dash(self):
         if not self.is_dashing:
+            self.game.sfx["hit"].play()
+
             # Moving left
             if self.flip:
                 self.is_dashing = -60
